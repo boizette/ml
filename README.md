@@ -1,2 +1,2 @@
 # ml
-Proactive machine learning project
+Practice machine learning project
