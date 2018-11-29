@@ -1,0 +1,153 @@
+---
+title: "Personal activity "
+author: "boizette"
+date: "28 novembre 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Qualitative Human Activity Recognition 
+
+## Overview
+Using devices such as Jawbone Up, Nike FuelBand and Fitbit it is now possible to collect a large amount of data about personal activity.  
+The data for this project come from the source http://groupware.les.inf.puc-rio.br/har
+Our goal will quantify how well people do a particular activity. 
+
+## Data
+We use data from accelerometers on the belt, forearm,arm and dumbell of 6 partcipants.    .
+The training and testing data are two CSV files available inside this web site     "https://d396qusza40orc.cloudfront.net/predmachlearn/
+
+
+#### Data loading
+
+```{r ,results="hold"}
+training<-read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv",na.strings=c("","NA","#DIV/0"))
+testing<-read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv",na.strings=c("","NA","#DIV/0"))
+```
+#### Basic summary  of the data
+
+```{r ,results="hold"}
+print(paste("the training dataset contain",as.character(dim(training)[1]),"rows and ",as.character(dim(training)[2]),"columns"))
+print(paste("the testing dataset contain",as.character(dim(testing)[1]),"rows and ",as.character(dim(testing)[2]),"columns"))
+```
+
+
+The variable classe  (last variable in the training set) measure how well people did the exercise. 
+
+```{r ,results="hold"}
+table(training$classe)
+```
+
+Classe=A corresponds to the perfect execution of the exercice 
+Other 4 classes correspond to common mistakes:
+Classe=B means less good
+etc
+Classe=E means very bad  
+
+The 'r dim(training)[2]-1' other variables indicates the characteristics of the multiple exercises
+
+
+#### Data Cleaning
+
+We find that some variables contain missing values (NA).We must eliminate them because in each of those cases the pourcentage of NA is close to 100%.
+In addition the first 7 columns contain information unrelated to the performance. They are also eliminated
+
+```{r ,results="hold"}
+l1<-apply(training,MARGIN=2,function(x) sum(is.na(x)))
+l1<-l1[l1!=0]
+print("% NA inside Columns which contain NA in the training dataset: ")
+print(paste("% NA > ",as.character(100*min(l1)/dim(training)[1]),"%"))
+
+m1<-apply(testing,MARGIN=2,function(x) sum(is.na(x)))
+m1<-m1[m1!=0]
+min(m1)
+print("% NA inside Columns which contain NA in the testing dataset: ")
+print(paste("% NA > ",as.character(100*min(m1)/dim(testing)[1]),"%"))
+trainingbis<-training[,-which(names(training) %in% names(l1))]
+trainingbis<-trainingbis[,8:dim(trainingbis)[2]]
+testingbis<-testing[,-which(names(testing) %in% names(m1))]
+testingbis<-testingbis[,8:dim(testingbis)[2]]
+print(paste("the training dataset contain",as.character(dim(trainingbis)[1]),"rows and ",as.character(dim(trainingbis)[2]),"columns"))
+print(paste("the testing dataset contain",as.character(dim(testingbis)[1]),"rows and ",as.character(dim(testingbis)[2]),"columns"))
+```
+
+
+## Sample preparation
+
+We realize a partition of the the training data (name trainingbis) into a new training dataset (name trainingP1) and a testing dataset (name trainingP2)
+
+```{r , ECHO=TRUE}
+library(caret)
+InTrain<-createDataPartition(trainingbis$classe,p=3/4)[[1]]
+trainingP1<-trainingbis[InTrain,]
+trainingP2<-trainingbis[-InTrain,]
+
+``` 
+
+## Model selection
+
+The approach is as follows:
+
+* The following models are calculated on the subsample trainingP1.
+
+* For each model, comparaison of the precisions obtained on the subsamples trainingP1 and trainingP2 allows to check if there is  to indicate that there is a situation of overfitting.
+
+* The accuracy of each model is estimated on subsample traningP2
+
+#### Model1 : classification trees
+```{r , ECHO=TRUE,results="hold"}
+model1<- train(classe~.,method="rpart",data=trainingP1,trControl=trainControl("cv",5),metric="Accuracy",preProcess=c("center","scale"))
+pred10<-predict(model1,newdata=trainingP1)
+cm10<-confusionMatrix(trainingP1$classe,pred10)
+cm10
+print("precision of the model1 on the subsample trainingP1:")
+print(paste("overall accuracy =",cm10$overall['Accuracy']))
+
+pred1<-predict(model1,newdata=trainingP2)
+cm1<-confusionMatrix(trainingP2$classe,pred1)
+cm1
+print("precision of the model1 on the subsample trainingP2:")
+print(paste("overall accuracy =",cm1$overall['Accuracy']))
+```
+This modèl is not accurate enough.
+
+
+#### Model2 :Random forest
+```{r , ECHO=TRUE,results="hold"}
+model2<- train(classe~.,method="rf",data=trainingP1,trControl=trainControl(method="CV",number=5),metric="Accuracy",preProcess=c("center","scale"))
+pred20<-predict(model2,newdata=trainingP1)
+cm20<-confusionMatrix(trainingP1$classe,pred20)
+cm20
+print("precision of the model2 on the subsample trainingP1:")
+print(paste("overall accuracy =",cm20$overall['Accuracy']))
+
+pred2<-predict(model2,newdata=trainingP2)
+cm2<-confusionMatrix(trainingP2$classe,pred2)
+cm2
+print("precision of the model2 on the subsample trainingP2:")
+print(paste("overall accuracy =",cm2$overall['Accuracy']))
+
+```
+
+This second modèl is very precis (Accuracy very high).
+In addition the comparaison of the precisions obtained on the subsamples trainingP1 and trainingP2 seems to indicate that there is no overfitting.  
+
+```{r , ECHO=TRUE,results="hold"}
+g1<-varImp(model2,scale=TRUE)$importance$Overall
+g2<-names(trainingbis)[1:52]
+gg<-data.frame(variable=g2,importance=g1)
+ggp<-gg[order(-gg$importance,gg$variable),][1:10,]
+par(mar=c(5,9,2,2))
+barplot(ggp$importance,names.arg=ggp$variable,horiz=TRUE,las=2,xlab="Importance (from 0 to 100",main="Most important variables")
+```
+
+## Prediction on test dataset (named testingbis)
+Applying the model2 (based on the random forest), we are able   to predict the 20 values of variable "classe" on the sample of 20 observations (named testingbis)
+
+```{r , ECHO=TRUE,results="hold"}
+predfinal<-predict(model2,newdata=testingbis)
+predfinal
+```
