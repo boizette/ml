@@ -47,7 +47,7 @@ Classe=B means less good
 etc
 Classe=E means very bad  
 
-The 'r dim(training)[2]-1' other variables indicates the characteristics of the multiple exercises
+The 'r dim(training)[2]-1' other variables indicates the characteristics of the multiple exercises.
 
 
 #### Data Cleaning
@@ -112,7 +112,7 @@ cm1
 print("precision of the model1 on the subsample trainingP2:")
 print(paste("overall accuracy =",cm1$overall['Accuracy']))
 ```
-This modèl is not accurate enough.
+This mod?l is not accurate enough.
 
 
 #### Model2 :Random forest
@@ -132,7 +132,7 @@ print(paste("overall accuracy =",cm2$overall['Accuracy']))
 
 ```
 
-This second modèl is very precis (Accuracy very high).
+This second mod?l is very precis (Accuracy very high).
 In addition the comparaison of the precisions obtained on the subsamples trainingP1 and trainingP2 seems to indicate that there is no overfitting.  
 
 ```{r , ECHO=TRUE,results="hold"}
